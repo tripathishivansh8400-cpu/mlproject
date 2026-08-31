@@ -1,4 +1,6 @@
+
 import sys
+import os
 from dataclasses import dataclass
 
 import numpy as np
@@ -11,15 +13,13 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.exception import CustomException
 from src.logger import logging
-import os
-
 from src.utlis import save_object
 
 
 @dataclass
 class DataTransformationConfig:
-    preprocessor_obj_file_path = os.path.join(
-        'artifact',
+    preprocessor_obj_file_path: str = os.path.join(
+        "artifact",
         "preprocessor.pkl"
     )
 
@@ -31,6 +31,7 @@ class Datatransformation:
 
 
     def get_data_transformer_object(self):
+
         try:
             numerical_columns = [
                 "writing_score",
@@ -46,6 +47,7 @@ class Datatransformation:
             ]
 
 
+            # Numerical Pipeline
             num_pipeline = Pipeline(
                 steps=[
                     ("imputer", SimpleImputer(strategy="median")),
@@ -54,11 +56,21 @@ class Datatransformation:
             )
 
 
+            # Categorical Pipeline
             categorical_pipeline = Pipeline(
                 steps=[
-                    ("imputer", SimpleImputer(strategy="most_frequent")),
-                    ("one_hot_encoder", OneHotEncoder()),
-                    ("scaler", StandardScaler())
+                    (
+                        "imputer",
+                        SimpleImputer(strategy="most_frequent")
+                    ),
+                    (
+                        "one_hot_encoder",
+                        OneHotEncoder()
+                    ),
+                    (
+                        "scaler",
+                        StandardScaler(with_mean=False)
+                    )
                 ]
             )
 
@@ -73,7 +85,7 @@ class Datatransformation:
 
 
             preprocessor = ColumnTransformer(
-                [
+                transformers=[
                     (
                         "num_pipeline",
                         num_pipeline,
@@ -86,6 +98,7 @@ class Datatransformation:
                     )
                 ]
             )
+
 
             return preprocessor
 
@@ -101,6 +114,7 @@ class Datatransformation:
     ):
 
         try:
+            # Read train and test data
             train_df = pd.read_csv(train_path)
             test_df = pd.read_csv(test_path)
 
@@ -108,10 +122,10 @@ class Datatransformation:
                 "Read train and test data completed"
             )
 
+
             logging.info(
                 "Obtaining preprocessing object"
             )
-
 
             preprocessing_obj = (
                 self.get_data_transformer_object()
@@ -121,9 +135,9 @@ class Datatransformation:
             target_column_name = "math_score"
 
 
+            # Training Data
             input_feature_train_df = train_df.drop(
-                columns=[target_column_name],
-                axis=1
+                columns=[target_column_name]
             )
 
             target_feature_train_df = train_df[
@@ -131,9 +145,9 @@ class Datatransformation:
             ]
 
 
+            # Testing Data
             input_feature_test_df = test_df.drop(
-                columns=[target_column_name],
-                axis=1
+                columns=[target_column_name]
             )
 
             target_feature_test_df = test_df[
@@ -142,10 +156,11 @@ class Datatransformation:
 
 
             logging.info(
-                "Applying preprocessing object"
+                "Applying preprocessing object on training and testing dataframe"
             )
 
 
+            # Fit on training data
             input_feature_train_arr = (
                 preprocessing_obj.fit_transform(
                     input_feature_train_df
@@ -153,6 +168,7 @@ class Datatransformation:
             )
 
 
+            # Transform test data
             input_feature_test_arr = (
                 preprocessing_obj.transform(
                     input_feature_test_df
@@ -160,6 +176,7 @@ class Datatransformation:
             )
 
 
+            # Combine X and y
             train_arr = np.c_[
                 input_feature_train_arr,
                 np.array(target_feature_train_df)
@@ -173,7 +190,7 @@ class Datatransformation:
 
 
             logging.info(
-                "Saved preprocessing object"
+                "Saving preprocessing object"
             )
 
 
